@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/wave_background.dart';
+import '../../widgets/sparkle_background.dart';
 import '../../widgets/coral_button.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -18,6 +18,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
+  bool _loading = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -26,23 +28,90 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _showError(String msg) {
+    if (!mounted) return;
+    setState(() {
+      _error = msg;
+      _loading = false;
+    });
+  }
+
+  String _mapError(String code) {
+    switch (code) {
+      case 'user-not-found':
+        return 'Bu e-posta adresiyle kayıtlı hesap bulunamadı.';
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'E-posta veya şifre yanlış.';
+      case 'invalid-email':
+        return 'Geçersiz e-posta formatı.';
+      case 'user-disabled':
+        return 'Bu hesap devre dışı bırakılmış.';
+      case 'too-many-requests':
+        return 'Çok fazla deneme. Lütfen bekleyiniz.';
+      case 'network-request-failed':
+        return 'İnternet bağlantısı yok.';
+      default:
+        return 'Giriş hatası: $code';
+    }
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    final auth = context.read<AuthProvider>();
-    auth.clearError();
-    final success = await auth.signInWithEmail(
-      email: _emailCtrl.text.trim(),
-      password: _passwordCtrl.text,
-    );
-    if (success && mounted) {
-      Navigator.pushReplacementNamed(context, '/home');
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final credential =
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailCtrl.text.trim().toLowerCase(),
+        password: _passwordCtrl.text,
+      );
+
+      if (credential.user != null && mounted) {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } on FirebaseAuthException catch (e) {
+      _showError(_mapError(e.code));
+    } catch (e) {
+      _showError('Beklenmeyen hata: ${e.toString()}');
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        setState(() => _loading = false);
+        return;
+      }
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+      if (userCredential.user != null && mounted) {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } on FirebaseAuthException catch (e) {
+      _showError(_mapError(e.code));
+    } catch (e) {
+      _showError('Google girişi başarısız: ${e.toString()}');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: WaveBackground(
+      body: SparkleBackground(
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(28),
@@ -55,47 +124,89 @@ class _LoginScreenState extends State<LoginScreen> {
                   _buildLogo(),
                   const SizedBox(height: 28),
                   const Text(
-                    'Falcı Teyze',
+                    'Falcım',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.textPrimary,
-                      fontFamily: 'Cinzel',
                       letterSpacing: 2,
                     ),
                   ).animate().fadeIn(duration: 500.ms),
                   const SizedBox(height: 6),
                   const Text(
-                    'Falcı Teyze\'ye Hoşgeldin',
+                    'Falcım\'ye Hoşgeldin',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppTheme.textSecondary,
-                      fontFamily: 'Cinzel',
                     ),
                   ).animate(delay: 100.ms).fadeIn(),
-                  const SizedBox(height: 40),
-                  _buildErrorBanner(),
+                  const SizedBox(height: 32),
+
+                  // Hata banner
+                  if (_error != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppTheme.error.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border:
+                            Border.all(color: AppTheme.error.withOpacity(0.5)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline,
+                              color: AppTheme.error, size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: const TextStyle(
+                                  color: AppTheme.error, fontSize: 13),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => setState(() => _error = null),
+                            child: const Icon(Icons.close,
+                                color: AppTheme.error, size: 16),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   TextFormField(
                     controller: _emailCtrl,
                     keyboardType: TextInputType.emailAddress,
+                    textCapitalization: TextCapitalization.none,
+                    autocorrect: false,
+                    enableSuggestions: false,
                     style: const TextStyle(
-                        color: AppTheme.textPrimary, fontFamily: 'Cinzel'),
+                        fontFamily: null,
+                        color: AppTheme.textPrimary,
+                        fontSize: 15),
                     decoration: const InputDecoration(
                       labelText: 'E-posta',
                       prefixIcon: Icon(Icons.email_outlined),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return 'E-posta giriniz';
+                      if (v == null || v.trim().isEmpty)
+                        return 'E-posta giriniz';
                       if (!v.contains('@')) return 'Geçerli e-posta giriniz';
                       return null;
                     },
                   ).animate(delay: 200.ms).fadeIn().slideX(begin: -0.1, end: 0),
                   const SizedBox(height: 16),
+
                   TextFormField(
                     controller: _passwordCtrl,
                     obscureText: _obscure,
+                    textCapitalization: TextCapitalization.none,
+                    autocorrect: false,
+                    enableSuggestions: false,
                     style: const TextStyle(
-                        color: AppTheme.textPrimary, fontFamily: 'Cinzel'),
+                        fontFamily: null,
+                        color: AppTheme.textPrimary,
+                        fontSize: 15),
                     decoration: InputDecoration(
                       labelText: 'Şifre',
                       prefixIcon: const Icon(Icons.lock_outline),
@@ -111,7 +222,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       if (v == null || v.isEmpty) return 'Şifre giriniz';
                       return null;
                     },
+                    onFieldSubmitted: (_) => _login(),
                   ).animate(delay: 300.ms).fadeIn().slideX(begin: 0.1, end: 0),
+
                   const SizedBox(height: 10),
                   Align(
                     alignment: Alignment.centerRight,
@@ -121,25 +234,43 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: const Text(
                         'Şifremi Unuttum',
                         style: TextStyle(
-                          color: AppTheme.secondary,
-                          fontFamily: 'Cinzel',
-                          fontSize: 13,
-                        ),
+                            color: AppTheme.secondary, fontSize: 13),
                       ),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Consumer<AuthProvider>(
-                    builder: (_, auth, __) => CoralButton(
-                      text: 'Giriş Yap',
-                      isLoading: auth.isLoading,
-                      onPressed: _login,
-                    ),
+
+                  CoralButton(
+                    text: 'Giriş Yap',
+                    isLoading: _loading,
+                    onPressed: _loading ? null : _login,
                   ).animate(delay: 400.ms).fadeIn(),
+
                   const SizedBox(height: 24),
-                  _buildDivider(),
+                  Row(
+                    children: [
+                      const Expanded(
+                          child: Divider(color: Color(0xFF5D3030))),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Text('veya',
+                            style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 13)),
+                      ),
+                      const Expanded(
+                          child: Divider(color: Color(0xFF5D3030))),
+                    ],
+                  ),
                   const SizedBox(height: 20),
-                  _buildSocialButtons(),
+
+                  SocialButton(
+                    text: 'Google ile Devam Et',
+                    logo: const Icon(Icons.g_mobiledata_rounded,
+                        color: Colors.white, size: 24),
+                    onPressed: _loading ? null : _loginWithGoogle,
+                  ),
+
                   const SizedBox(height: 28),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -147,10 +278,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const Text(
                         'Hesabın yok mu? ',
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontFamily: 'Cinzel',
-                          fontSize: 14,
-                        ),
+                            color: AppTheme.textSecondary, fontSize: 14),
                       ),
                       GestureDetector(
                         onTap: () =>
@@ -160,7 +288,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: TextStyle(
                             color: AppTheme.primary,
                             fontWeight: FontWeight.bold,
-                            fontFamily: 'Cinzel',
                             fontSize: 14,
                           ),
                         ),
@@ -179,19 +306,30 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildLogo() {
     return Container(
-      width: 110,
-      height: 110,
+      width: 130,
+      height: 130,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: const RadialGradient(
-          colors: [Color(0xFF5D2020), Color(0xFF3D1010)],
+          center: Alignment(-0.3, -0.4),
+          radius: 1.0,
+          colors: [
+            Color(0xFFFF8A80),
+            Color(0xFFCC2030),
+            Color(0xFF8A0010)
+          ],
         ),
-        border: Border.all(color: AppTheme.primary, width: 2.5),
+        border: Border.all(color: Colors.white, width: 3),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withOpacity(0.35),
-            blurRadius: 25,
-            spreadRadius: 3,
+            color: const Color(0xFFFF8AAA).withOpacity(0.55),
+            blurRadius: 32,
+            spreadRadius: 6,
+          ),
+          BoxShadow(
+            color: AppTheme.gold.withOpacity(0.35),
+            blurRadius: 20,
+            spreadRadius: 2,
           ),
         ],
       ),
@@ -200,112 +338,12 @@ class _LoginScreenState extends State<LoginScreen> {
           'assets/images/avatar.png',
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => const Icon(
-            Icons.auto_awesome,
-            size: 55,
-            color: AppTheme.primary,
+            Icons.back_hand_outlined,
+            size: 65,
+            color: Colors.white,
           ),
         ),
       ),
     ).animate().scale(duration: 700.ms, curve: Curves.elasticOut);
-  }
-
-  Widget _buildErrorBanner() {
-    return Consumer<AuthProvider>(
-      builder: (_, auth, __) {
-        if (auth.error == null) return const SizedBox.shrink();
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppTheme.error.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(12),
-            border:
-                Border.all(color: AppTheme.error.withOpacity(0.5)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.error_outline,
-                  color: AppTheme.error, size: 18),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  auth.error!,
-                  style: const TextStyle(
-                    color: AppTheme.error,
-                    fontFamily: 'Cinzel',
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildDivider() {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: Color(0xFF5D3030))),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'veya',
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontFamily: 'Cinzel',
-              fontSize: 13,
-            ),
-          ),
-        ),
-        const Expanded(child: Divider(color: Color(0xFF5D3030))),
-      ],
-    );
-  }
-
-  Widget _buildSocialButtons() {
-    return Column(
-      children: [
-        SocialButton(
-          text: 'Google ile Devam Et',
-          logo: const Icon(Icons.g_mobiledata_rounded,
-              color: Colors.white, size: 24),
-          onPressed: () async {
-            final success =
-                await context.read<AuthProvider>().signInWithGoogle();
-            if (success && mounted) {
-              Navigator.pushReplacementNamed(context, '/home');
-            }
-          },
-        ),
-        const SizedBox(height: 10),
-        SocialButton(
-          text: 'Facebook ile Devam Et',
-          logo: const Icon(Icons.facebook_rounded,
-              color: Color(0xFF1877F2), size: 22),
-          onPressed: () async {
-            final success =
-                await context.read<AuthProvider>().signInWithFacebook();
-            if (success && mounted) {
-              Navigator.pushReplacementNamed(context, '/home');
-            }
-          },
-        ),
-        const SizedBox(height: 10),
-        SocialButton(
-          text: 'Apple ile Devam Et',
-          logo:
-              const Icon(Icons.apple, color: Colors.white, size: 22),
-          onPressed: () async {
-            final success =
-                await context.read<AuthProvider>().signInWithApple();
-            if (success && mounted) {
-              Navigator.pushReplacementNamed(context, '/home');
-            }
-          },
-        ),
-      ],
-    );
   }
 }

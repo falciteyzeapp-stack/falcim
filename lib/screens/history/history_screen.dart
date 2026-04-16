@@ -42,7 +42,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textPrimary,
-                  fontFamily: 'Cinzel',
                 ),
               ),
             ),
@@ -52,6 +51,33 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   if (provider.isLoading) {
                     return const Center(
                       child: CircularProgressIndicator(color: AppTheme.primary),
+                    );
+                  }
+                  if (provider.error != null) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.error_outline, color: AppTheme.error, size: 48),
+                            const SizedBox(height: 12),
+                            Text(
+                              provider.error!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: AppTheme.textSecondary),
+                            ),
+                            const SizedBox(height: 16),
+                            TextButton(
+                              onPressed: () {
+                                final uid = context.read<AuthProvider>().user?.uid;
+                                if (uid != null) context.read<ReadingProvider>().loadReadings(uid);
+                              },
+                              child: const Text('Tekrar Dene', style: TextStyle(color: AppTheme.primary)),
+                            ),
+                          ],
+                        ),
+                      ),
                     );
                   }
                   if (provider.readings.isEmpty) {
@@ -96,7 +122,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
             'Henüz fal geçmişin yok',
             style: TextStyle(
               color: AppTheme.textSecondary,
-              fontFamily: 'Cinzel',
               fontSize: 16,
             ),
           ),
@@ -106,7 +131,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppTheme.textSecondary,
-              fontFamily: 'Cinzel',
               fontSize: 13,
               height: 1.5,
             ),
@@ -117,7 +141,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildItem(BuildContext context, ReadingModel reading) {
-    final isCoffee = reading.type == ReadingType.coffee;
+    String emoji;
+    String label;
+    switch (reading.type) {
+      case ReadingType.coffee:
+        emoji = '☕';
+        label = 'Kahve Falı';
+        break;
+      case ReadingType.tarot:
+        emoji = '🃏';
+        label = 'Tarot Falı';
+        break;
+      case ReadingType.palm:
+        emoji = '🖐';
+        label = 'El Falı';
+        break;
+    }
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -144,7 +183,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               child: Center(
                 child: Text(
-                  isCoffee ? '☕' : '🃏',
+                  emoji,
                   style: const TextStyle(fontSize: 24),
                 ),
               ),
@@ -155,10 +194,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isCoffee ? 'Kahve Falı' : 'Tarot Falı',
+                    label,
                     style: const TextStyle(
                       color: AppTheme.textPrimary,
-                      fontFamily: 'Cinzel',
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
@@ -168,7 +206,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     reading.topic,
                     style: const TextStyle(
                       color: AppTheme.primary,
-                      fontFamily: 'Cinzel',
                       fontSize: 12,
                     ),
                   ),
@@ -178,7 +215,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         .format(reading.createdAt),
                     style: const TextStyle(
                       color: AppTheme.textSecondary,
-                      fontFamily: 'Cinzel',
                       fontSize: 11,
                     ),
                   ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
@@ -14,6 +15,7 @@ class AuthProvider with ChangeNotifier {
   UserModel? _user;
   String? _error;
   bool _isLoading = false;
+  StreamSubscription<UserModel?>? _userStreamSub;
 
   AuthStatus get status => _status;
   UserModel? get user => _user;
@@ -22,26 +24,56 @@ class AuthProvider with ChangeNotifier {
   bool get isAuthenticated => _status == AuthStatus.authenticated;
 
   AuthProvider() {
+    final cachedUser = FirebaseAuth.instance.currentUser;
+    if (cachedUser != null) {
+      _status = AuthStatus.authenticated;
+      _startUserStream(cachedUser.uid);
+    }
+
     _authService.authStateChanges.listen(_onAuthStateChanged);
+
+    Future.delayed(const Duration(seconds: 5), () {
+      if (_status == AuthStatus.uninitialized) {
+        _status = AuthStatus.unauthenticated;
+        notifyListeners();
+      }
+    });
   }
 
   Future<void> _onAuthStateChanged(User? firebaseUser) async {
-    if (firebaseUser == null) {
-      _status = AuthStatus.unauthenticated;
-      _user = null;
-    } else {
-      _status = AuthStatus.authenticated;
-      _user = await _firestoreService.getUser(firebaseUser.uid);
+    try {
+      if (firebaseUser == null) {
+        _status = AuthStatus.unauthenticated;
+        _user = null;
+        _stopUserStream();
+      } else {
+        _status = AuthStatus.authenticated;
+        _startUserStream(firebaseUser.uid);
+      }
+    } catch (e) {
+      debugPrint('[AuthProvider] _onAuthStateChanged error: $e');
     }
     notifyListeners();
   }
 
-  void _listenUserUpdates() {
-    if (_user == null) return;
-    _firestoreService.userStream(_user!.uid).listen((updatedUser) {
-      _user = updatedUser;
-      notifyListeners();
-    });
+  /// Firestore real-time stream — credits dahil her değişiklik anında yansır
+  void _startUserStream(String uid) {
+    _stopUserStream();
+    _userStreamSub = _firestoreService.userStream(uid).listen(
+      (updatedUser) {
+        if (updatedUser != null) {
+          _user = updatedUser;
+          debugPrint('[AuthProvider] credits=${updatedUser.credits}');
+          notifyListeners();
+        }
+      },
+      onError: (e) => debugPrint('[AuthProvider] userStream error: $e'),
+    );
+  }
+
+  void _stopUserStream() {
+    _userStreamSub?.cancel();
+    _userStreamSub = null;
   }
 
   Future<bool> registerWithEmail({
@@ -58,10 +90,13 @@ class AuthProvider with ChangeNotifier {
         displayName: displayName,
       );
       _status = AuthStatus.authenticated;
-      _listenUserUpdates();
+      if (_user != null) _startUserStream(_user!.uid);
       return true;
     } on FirebaseAuthException catch (e) {
       _setError(_mapFirebaseError(e.code));
+      return false;
+    } catch (e) {
+      _setError('Kayıt sırasında hata oluştu.');
       return false;
     } finally {
       _setLoading(false);
@@ -80,10 +115,13 @@ class AuthProvider with ChangeNotifier {
         password: password,
       );
       _status = AuthStatus.authenticated;
-      _listenUserUpdates();
+      if (_user != null) _startUserStream(_user!.uid);
       return true;
     } on FirebaseAuthException catch (e) {
       _setError(_mapFirebaseError(e.code));
+      return false;
+    } catch (e) {
+      _setError('Giriş sırasında hata oluştu.');
       return false;
     } finally {
       _setLoading(false);
@@ -96,7 +134,7 @@ class AuthProvider with ChangeNotifier {
     try {
       _user = await _authService.signInWithGoogle();
       _status = AuthStatus.authenticated;
-      _listenUserUpdates();
+      if (_user != null) _startUserStream(_user!.uid);
       return true;
     } catch (e) {
       _setError('Google ile giriş başarısız oldu.');
@@ -112,7 +150,7 @@ class AuthProvider with ChangeNotifier {
     try {
       _user = await _authService.signInWithFacebook();
       _status = AuthStatus.authenticated;
-      _listenUserUpdates();
+      if (_user != null) _startUserStream(_user!.uid);
       return true;
     } catch (e) {
       _setError('Facebook ile giriş başarısız oldu.');
@@ -128,7 +166,7 @@ class AuthProvider with ChangeNotifier {
     try {
       _user = await _authService.signInWithApple();
       _status = AuthStatus.authenticated;
-      _listenUserUpdates();
+      if (_user != null) _startUserStream(_user!.uid);
       return true;
     } catch (e) {
       _setError('Apple ile giriş başarısız oldu.');
@@ -138,16 +176,27 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> sendPasswordResetEmail(String email) async {
+  Future<bool> sendPasswordResetEmail(String email) async {
     _setLoading(true);
     _clearError();
     try {
       await _authService.sendPasswordResetEmail(email);
+      return true;
     } on FirebaseAuthException catch (e) {
       _setError(_mapFirebaseError(e.code));
+      return false;
     } finally {
       _setLoading(false);
     }
+  }
+
+  Future<void> updateDisplayName(String name) async {
+    if (_user == null) return;
+    try {
+      await _firestoreService.updateUserDisplayName(_user!.uid, name);
+      _user = _user!.copyWith(displayName: name);
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<bool> changePassword({
@@ -171,16 +220,32 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    _stopUserStream();
     await _authService.signOut();
     _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
   }
 
-  void refreshUser() async {
-    if (_user == null) return;
-    _user = await _firestoreService.getUser(_user!.uid);
+  /// Ödeme sonrası krediyi anında bellekte güncelle — stream bekleme yok
+  void forceSetCredits(int credits) {
+    final uid = _user?.uid ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (uid.isEmpty) return;
+    _user = (_user ?? UserModel(
+      uid: uid,
+      email: FirebaseAuth.instance.currentUser?.email ?? '',
+      displayName: FirebaseAuth.instance.currentUser?.displayName ?? 'Kullanıcı',
+      credits: 0,
+      freeCreditClaimed: true,
+      createdAt: DateTime.now(),
+    )).copyWith(credits: credits);
+    debugPrint('[AuthProvider] forceSetCredits → $credits');
     notifyListeners();
+  }
+
+  void refreshUser() {
+    final uid = _user?.uid ?? FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) _startUserStream(uid);
   }
 
   String _mapFirebaseError(String code) {

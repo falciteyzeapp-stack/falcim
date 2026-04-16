@@ -30,7 +30,6 @@ class PrivacyPolicyScreen extends StatelessWidget {
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textPrimary,
-                          fontFamily: 'Cinzel',
                         ),
                       ),
                     ),
@@ -45,7 +44,6 @@ class PrivacyPolicyScreen extends StatelessWidget {
                     _privacyText,
                     style: TextStyle(
                       color: AppTheme.textPrimary,
-                      fontFamily: 'Cinzel',
                       fontSize: 13,
                       height: 1.8,
                     ),
@@ -64,7 +62,7 @@ const String _privacyText = '''
 GİZLİLİK POLİTİKASI
 Son güncelleme: Şubat 2026
 
-Falcı Teyze uygulamasını kullandığınız için teşekkür ederiz.
+Falcım uygulamasını kullandığınız için teşekkür ederiz.
 
 1. TOPLANAN VERİLER
 

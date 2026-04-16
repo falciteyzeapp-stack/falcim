@@ -23,9 +23,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _send() async {
-    if (_emailCtrl.text.trim().isEmpty) return;
+    final email = _emailCtrl.text.trim().toLowerCase();
+    if (email.isEmpty) return;
     final auth = context.read<AuthProvider>();
-    await auth.sendPasswordResetEmail(_emailCtrl.text.trim());
+    await auth.sendPasswordResetEmail(email);
     if (mounted && auth.error == null) {
       setState(() => _sent = true);
     }
@@ -53,7 +54,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.textPrimary,
-                    fontFamily: 'Cinzel',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -61,7 +61,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   'E-posta adresinizi girin. Şifre sıfırlama bağlantısı göndereceğiz.',
                   style: TextStyle(
                     color: AppTheme.textSecondary,
-                    fontFamily: 'Cinzel',
                     fontSize: 14,
                     height: 1.5,
                   ),
@@ -86,7 +85,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             'Şifre sıfırlama bağlantısı e-postanıza gönderildi.',
                             style: TextStyle(
                               color: Colors.green,
-                              fontFamily: 'Cinzel',
                               fontSize: 13,
                             ),
                           ),
@@ -111,7 +109,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           auth.error!,
                           style: const TextStyle(
                             color: AppTheme.error,
-                            fontFamily: 'Cinzel',
                             fontSize: 13,
                           ),
                         ),
@@ -121,8 +118,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   TextFormField(
                     controller: _emailCtrl,
                     keyboardType: TextInputType.emailAddress,
+                    textCapitalization: TextCapitalization.none,
+                    autocorrect: false,
                     style: const TextStyle(
-                        color: AppTheme.textPrimary, fontFamily: 'Cinzel'),
+                        fontFamily: null, color: AppTheme.textPrimary),
                     decoration: const InputDecoration(
                       labelText: 'E-posta',
                       prefixIcon: Icon(Icons.email_outlined),

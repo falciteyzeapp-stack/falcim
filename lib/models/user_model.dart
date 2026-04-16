@@ -29,7 +29,7 @@ class UserModel {
       email: map['email'] ?? '',
       displayName: map['displayName'],
       phoneNumber: map['phoneNumber'],
-      credits: map['credits'] ?? 0,
+      credits: map['krediler'] ?? 0,
       freeCreditClaimed: map['freeCreditClaimed'] ?? false,
       isPremium: map['isPremium'] ?? false,
       premiumUntil: map['premiumUntil'] != null
@@ -46,7 +46,7 @@ class UserModel {
       'email': email,
       'displayName': displayName,
       'phoneNumber': phoneNumber,
-      'credits': credits,
+      'krediler': credits,
       'freeCreditClaimed': freeCreditClaimed,
       'isPremium': isPremium,
       'premiumUntil':

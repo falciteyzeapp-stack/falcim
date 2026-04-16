@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/reading_provider.dart';
+import '../../services/notification_service.dart';
+import '../../models/reading_model.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/wave_background.dart';
 import '../../config/constants.dart';
@@ -31,14 +34,17 @@ class _CoffeeWaitingScreenState extends State<CoffeeWaitingScreen>
   late AnimationController _pulseController;
   Timer? _timer;
   int _remainingSeconds = AppConstants.waitingMinutes * 60;
-  bool _generating = false;
   int _messageIndex = 0;
 
+  // Reading future — initState'de başlatılır, timer bitince await edilir
+  Future<ReadingModel?>? _readingFuture;
+  bool _navigating = false;
+
   static const List<String> _messages = [
-    'Falcı Teyze fincana bakıyor...',
+    'Falcım fincana bakıyor...',
     'Enerjine odaklan...',
     'Telvede şekiller beliriyor...',
-    'Falcı Teyze yorumluyor...',
+    'Falcım yorumluyor...',
     'Semboller okunuyor...',
     'Sabırlı ol, her şey hazırlanıyor...',
     'Kaderine yazılanlar ortaya çıkıyor...',
@@ -54,7 +60,55 @@ class _CoffeeWaitingScreenState extends State<CoffeeWaitingScreen>
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
-    _startTimer();
+    // Cloud Function'ı HEMEN arka planda başlat — timer bitmesini bekleme
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startReadingInBackground();
+      _startTimer();
+    });
+  }
+
+  void _startReadingInBackground() {
+    final uid = context.read<AuthProvider>().user?.uid;
+    if (uid == null) {
+      debugPrint('[READ] timeout — uid is null, cannot start reading');
+      return;
+    }
+    debugPrint('[READ] start — background reading triggered immediately');
+    _readingFuture = context.read<ReadingProvider>().startCoffeeReading(
+          uid: uid,
+          topic: widget.topic,
+          userNote: widget.userNote,
+          images: widget.images,
+        );
+
+    // React immediately when future resolves — don't wait for the 5-min timer
+    _readingFuture!.then((reading) {
+      debugPrint('[READ] future resolved early — reading=${reading != null ? "ok" : "null"}');
+      if (!mounted || _navigating) return;
+      _timer?.cancel();
+      _navigating = true;
+      setState(() {});
+      if (reading != null) {
+        debugPrint('[READ] navigating to result screen immediately');
+        try { NotificationService().showReadingCompleteNotification().catchError((_) {}); } catch (_) {}
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CoffeeResultScreen(reading: reading),
+          ),
+        );
+      } else {
+        final err = context.read<ReadingProvider>().error ?? 'Yorum oluşturulamadı. Lütfen tekrar deneyin.';
+        debugPrint('[READ] error — $err');
+        _showError(err);
+      }
+    }).catchError((e) {
+      debugPrint('[READ] future catchError — $e');
+      if (!mounted || _navigating) return;
+      _timer?.cancel();
+      _navigating = true;
+      _showError('Hata: $e');
+    });
   }
 
   void _startTimer() {
@@ -63,50 +117,67 @@ class _CoffeeWaitingScreenState extends State<CoffeeWaitingScreen>
         timer.cancel();
         return;
       }
+      final elapsed = (AppConstants.waitingMinutes * 60) - _remainingSeconds + 1;
       setState(() {
-        if (_remainingSeconds > 0) {
-          _remainingSeconds--;
-          _messageIndex = (_messageIndex + 1) % _messages.length;
-        } else {
-          timer.cancel();
-          _finishAndGenerate();
-        }
+        _remainingSeconds = (_remainingSeconds - 1).clamp(0, AppConstants.waitingMinutes * 60);
+        _messageIndex = (elapsed ~/ 8) % _messages.length;
       });
+      if (_remainingSeconds <= 0) {
+        timer.cancel();
+        _onTimerDone();
+      }
     });
   }
 
-  Future<void> _finishAndGenerate() async {
-    if (_generating) return;
-    setState(() => _generating = true);
+  Future<void> _onTimerDone() async {
+    if (_navigating) return;
+    _navigating = true;
+    debugPrint('[READ] timeout — timer done, awaiting reading future');
 
-    final uid = context.read<AuthProvider>().user?.uid;
-    if (uid == null) return;
+    if (_readingFuture == null) {
+      debugPrint('[READ] error — readingFuture is null');
+      _showError();
+      return;
+    }
 
-    final reading = await context.read<ReadingProvider>().startCoffeeReading(
-          uid: uid,
-          topic: widget.topic,
-          userNote: widget.userNote,
-          images: widget.images,
-        );
+    ReadingModel? reading;
+    String? readingError;
+    try {
+      reading = await _readingFuture;
+      debugPrint('[READ] result loaded — reading=${reading != null ? "ok" : "null"}');
+    } catch (e) {
+      readingError = '$e';
+      debugPrint('[READ] error — awaiting readingFuture: $e');
+    }
 
     if (!mounted) return;
 
     if (reading != null) {
+      try {
+        await NotificationService().showReadingCompleteNotification();
+      } catch (_) {}
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => CoffeeResultScreen(reading: reading),
+          builder: (_) => CoffeeResultScreen(reading: reading!),
         ),
       );
     } else {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bir hata oluştu. Lütfen tekrar deneyin.'),
-          backgroundColor: AppTheme.error,
-        ),
-      );
+      final err = readingError ?? context.read<ReadingProvider>().error ?? 'Yorum oluşturulamadı. Lütfen tekrar deneyin.';
+      _showError(err);
     }
+  }
+
+  void _showError([String? message]) {
+    if (!mounted) return;
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message ?? 'Bir hata oluştu. Lütfen tekrar deneyin.'),
+        backgroundColor: AppTheme.error,
+        duration: const Duration(seconds: 5),
+      ),
+    );
   }
 
   String get _timerText {
@@ -114,6 +185,8 @@ class _CoffeeWaitingScreenState extends State<CoffeeWaitingScreen>
     final seconds = _remainingSeconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
+
+  bool get _isGenerating => _remainingSeconds <= 0 || _navigating;
 
   @override
   void dispose() {
@@ -143,14 +216,11 @@ class _CoffeeWaitingScreenState extends State<CoffeeWaitingScreen>
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: const RadialGradient(
-                            colors: [
-                              Color(0xFF5D2020),
-                              Color(0xFF3D1010),
-                            ],
+                            colors: [Color(0xFF5D2020), Color(0xFF3D1010)],
                           ),
                           border: Border.all(
-                            color: AppTheme.primary
-                                .withOpacity(0.5 + _pulseController.value * 0.5),
+                            color: AppTheme.primary.withOpacity(
+                                0.5 + _pulseController.value * 0.5),
                             width: 2,
                           ),
                           boxShadow: [
@@ -163,10 +233,7 @@ class _CoffeeWaitingScreenState extends State<CoffeeWaitingScreen>
                           ],
                         ),
                         child: const Center(
-                          child: Text(
-                            '☕',
-                            style: TextStyle(fontSize: 64),
-                          ),
+                          child: Text('☕', style: TextStyle(fontSize: 64)),
                         ),
                       ),
                     ),
@@ -178,7 +245,6 @@ class _CoffeeWaitingScreenState extends State<CoffeeWaitingScreen>
                       fontSize: 56,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.primary,
-                      fontFamily: 'Cinzel',
                       letterSpacing: 4,
                     ),
                   ).animate().fadeIn(),
@@ -187,7 +253,6 @@ class _CoffeeWaitingScreenState extends State<CoffeeWaitingScreen>
                     'kaldı',
                     style: TextStyle(
                       color: AppTheme.textSecondary,
-                      fontFamily: 'Cinzel',
                       fontSize: 14,
                       letterSpacing: 2,
                     ),
@@ -196,14 +261,13 @@ class _CoffeeWaitingScreenState extends State<CoffeeWaitingScreen>
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 600),
                     child: Text(
-                      _generating
+                      _isGenerating
                           ? 'Yorum hazırlanıyor...'
                           : _messages[_messageIndex],
                       key: ValueKey(_messageIndex),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: AppTheme.textPrimary,
-                        fontFamily: 'Cinzel',
                         fontSize: 18,
                         fontStyle: FontStyle.italic,
                         height: 1.5,
@@ -211,11 +275,9 @@ class _CoffeeWaitingScreenState extends State<CoffeeWaitingScreen>
                     ),
                   ),
                   const SizedBox(height: 48),
-                  if (_generating)
-                    const CircularProgressIndicator(
-                      color: AppTheme.primary,
-                    )
-                  else ...[
+                  if (_isGenerating)
+                    const CircularProgressIndicator(color: AppTheme.primary)
+                  else
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 12),
@@ -230,13 +292,11 @@ class _CoffeeWaitingScreenState extends State<CoffeeWaitingScreen>
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: AppTheme.textSecondary,
-                          fontFamily: 'Cinzel',
                           fontSize: 12,
                           height: 1.4,
                         ),
                       ),
                     ),
-                  ],
                 ],
               ),
             ),

@@ -29,20 +29,20 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'YOUR_ANDROID_API_KEY',
-    appId: '1:YOUR_PROJECT_NUMBER:android:YOUR_APP_ID',
-    messagingSenderId: 'YOUR_PROJECT_NUMBER',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_PROJECT_ID.appspot.com',
+    apiKey: 'AIzaSyDIEAvo-hLBEepqZvZ2hUeUMAKDrwdsKaY',
+    appId: '1:691072704853:android:624820a143e1d57b4acfdc',
+    messagingSenderId: '691072704853',
+    projectId: 'falci-teeyze',
+    storageBucket: 'falci-teeyze.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'YOUR_IOS_API_KEY',
-    appId: '1:YOUR_PROJECT_NUMBER:ios:YOUR_APP_ID',
-    messagingSenderId: 'YOUR_PROJECT_NUMBER',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_PROJECT_ID.appspot.com',
-    iosBundleId: 'com.mysticfal.falciteyze',
+    apiKey: 'AIzaSyD6eJFyyPZT7FPJMoleb6wyLV43cVgt8zI',
+    appId: '1:691072704853:ios:242e3a7ca0912f024acfdc',
+    messagingSenderId: '691072704853',
+    projectId: 'falci-teeyze',
+    storageBucket: 'falci-teeyze.firebasestorage.app',
+    iosBundleId: 'com.mysticfal.falciTeyze',
   );
 
   static const FirebaseOptions web = FirebaseOptions(

@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/reading_provider.dart';
+import '../../services/notification_service.dart';
 import '../../models/tarot_card.dart';
+import '../../models/reading_model.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/wave_background.dart';
 import '../../config/constants.dart';
@@ -31,12 +34,14 @@ class _TarotWaitingScreenState extends State<TarotWaitingScreen>
   late AnimationController _pulseController;
   Timer? _timer;
   int _remainingSeconds = AppConstants.waitingMinutes * 60;
-  bool _generating = false;
   int _messageIndex = 0;
+
+  Future<ReadingModel?>? _readingFuture;
+  bool _navigating = false;
 
   static const List<String> _messages = [
     'Kartların enerjisi açılıyor...',
-    'Falcı Teyze yorumluyor...',
+    'Falcım yorumluyor...',
     'Evrenin mesajları okunuyor...',
     'Semboller konuşuyor...',
     'Sabırlı ol...',
@@ -53,60 +58,117 @@ class _TarotWaitingScreenState extends State<TarotWaitingScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    _startTimer();
-  }
 
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      setState(() {
-        if (_remainingSeconds > 0) {
-          _remainingSeconds--;
-          _messageIndex = (_messageIndex + 1) % _messages.length;
-        } else {
-          timer.cancel();
-          _finishAndGenerate();
-        }
-      });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startReadingInBackground();
+      _startTimer();
     });
   }
 
-  Future<void> _finishAndGenerate() async {
-    if (_generating) return;
-    setState(() => _generating = true);
-
+  void _startReadingInBackground() {
     final uid = context.read<AuthProvider>().user?.uid;
     if (uid == null) return;
-
     final cardNames = widget.cards.map((c) => c.nameTr).toList();
-    final reading = await context.read<ReadingProvider>().startTarotReading(
+    debugPrint('[READ] start — background tarot reading triggered immediately');
+    _readingFuture = context.read<ReadingProvider>().startTarotReading(
           uid: uid,
           topic: widget.topic,
           userNote: widget.userNote,
           cardNames: cardNames,
         );
 
+    // React immediately when future resolves — don't wait for the 5-min timer
+    _readingFuture!.then((reading) {
+      debugPrint('[READ] future resolved early — reading=${reading != null ? "ok" : "null"}');
+      if (!mounted || _navigating) return;
+      _timer?.cancel();
+      _navigating = true;
+      setState(() {});
+      if (reading != null) {
+        debugPrint('[READ] navigating to result screen immediately');
+        try { NotificationService().showReadingCompleteNotification().catchError((_) {}); } catch (_) {}
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TarotResultScreen(reading: reading, cards: widget.cards),
+          ),
+        );
+      } else {
+        final err = context.read<ReadingProvider>().error ?? 'Yorum oluşturulamadı. Lütfen tekrar deneyin.';
+        debugPrint('[READ] error — $err');
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(err),
+            backgroundColor: AppTheme.error,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }).catchError((e) {
+      debugPrint('[READ] future catchError — $e');
+      if (!mounted || _navigating) return;
+      _timer?.cancel();
+      _navigating = true;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Hata: $e'),
+          backgroundColor: AppTheme.error,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    });
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) { timer.cancel(); return; }
+      final elapsed = (AppConstants.waitingMinutes * 60) - _remainingSeconds + 1;
+      setState(() {
+        _remainingSeconds = (_remainingSeconds - 1).clamp(0, AppConstants.waitingMinutes * 60);
+        _messageIndex = (elapsed ~/ 8) % _messages.length;
+      });
+      if (_remainingSeconds <= 0) {
+        timer.cancel();
+        _onTimerDone();
+      }
+    });
+  }
+
+  Future<void> _onTimerDone() async {
+    if (_navigating) return;
+    _navigating = true;
+    debugPrint('[READ] timeout — timer done, awaiting tarot future');
+
+    ReadingModel? reading;
+    String? readingError;
+    try {
+      reading = await _readingFuture;
+      debugPrint('[READ] result loaded — tarot=${reading != null ? "ok" : "null"}');
+    } catch (e) {
+      readingError = '$e';
+      debugPrint('[READ] error — $e');
+    }
+
     if (!mounted) return;
 
     if (reading != null) {
+      try { await NotificationService().showReadingCompleteNotification(); } catch (_) {}
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => TarotResultScreen(
-            reading: reading,
-            cards: widget.cards,
-          ),
+          builder: (_) => TarotResultScreen(reading: reading!, cards: widget.cards),
         ),
       );
     } else {
+      final err = readingError ?? context.read<ReadingProvider>().error ?? 'Yorum oluşturulamadı. Lütfen tekrar deneyin.';
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bir hata oluştu. Lütfen tekrar deneyin.'),
+        SnackBar(
+          content: Text(err),
           backgroundColor: AppTheme.error,
+          duration: const Duration(seconds: 5),
         ),
       );
     }
@@ -174,7 +236,6 @@ class _TarotWaitingScreenState extends State<TarotWaitingScreen>
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
                                       color: Colors.white,
-                                      fontFamily: 'Cinzel',
                                       fontSize: 7,
                                     ),
                                     maxLines: 2,
@@ -195,7 +256,6 @@ class _TarotWaitingScreenState extends State<TarotWaitingScreen>
                       fontSize: 56,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.primary,
-                      fontFamily: 'Cinzel',
                       letterSpacing: 4,
                     ),
                   ),
@@ -204,7 +264,6 @@ class _TarotWaitingScreenState extends State<TarotWaitingScreen>
                     'kaldı',
                     style: TextStyle(
                       color: AppTheme.textSecondary,
-                      fontFamily: 'Cinzel',
                       fontSize: 14,
                       letterSpacing: 2,
                     ),
@@ -213,14 +272,13 @@ class _TarotWaitingScreenState extends State<TarotWaitingScreen>
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 600),
                     child: Text(
-                      _generating
+                      _navigating
                           ? 'Tarot yorumu hazırlanıyor...'
                           : _messages[_messageIndex],
                       key: ValueKey(_messageIndex),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: AppTheme.textPrimary,
-                        fontFamily: 'Cinzel',
                         fontSize: 18,
                         fontStyle: FontStyle.italic,
                         height: 1.5,
@@ -228,7 +286,7 @@ class _TarotWaitingScreenState extends State<TarotWaitingScreen>
                     ),
                   ),
                   const SizedBox(height: 48),
-                  if (_generating)
+                  if (_navigating)
                     const CircularProgressIndicator(color: AppTheme.primary)
                   else
                     Container(
@@ -245,7 +303,6 @@ class _TarotWaitingScreenState extends State<TarotWaitingScreen>
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: AppTheme.textSecondary,
-                          fontFamily: 'Cinzel',
                           fontSize: 12,
                           height: 1.4,
                         ),

@@ -82,7 +82,6 @@ class TarotResultScreen extends StatelessWidget {
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textPrimary,
-                fontFamily: 'Cinzel',
               ),
             ),
           ),
@@ -126,7 +125,6 @@ class TarotResultScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontFamily: 'Cinzel',
                       fontSize: 8,
                       fontWeight: FontWeight.bold,
                     ),
@@ -139,7 +137,6 @@ class TarotResultScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.7),
-                      fontFamily: 'Cinzel',
                       fontSize: 7,
                     ),
                   ),
@@ -166,7 +163,6 @@ class TarotResultScreen extends StatelessWidget {
             reading.topic,
             style: const TextStyle(
               color: AppTheme.primary,
-              fontFamily: 'Cinzel',
               fontSize: 12,
               fontWeight: FontWeight.bold,
             ),
@@ -178,7 +174,6 @@ class TarotResultScreen extends StatelessWidget {
               .format(reading.createdAt),
           style: const TextStyle(
             color: AppTheme.textSecondary,
-            fontFamily: 'Cinzel',
             fontSize: 12,
           ),
         ),
@@ -209,10 +204,9 @@ class TarotResultScreen extends StatelessWidget {
               Icon(Icons.auto_awesome, color: AppTheme.gold, size: 18),
               SizedBox(width: 8),
               Text(
-                'Falcı Teyze\'nin Tarot Yorumu',
+                'Falcım\'nin Tarot Yorumu',
                 style: TextStyle(
                   color: AppTheme.gold,
-                  fontFamily: 'Cinzel',
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                 ),
@@ -226,7 +220,6 @@ class TarotResultScreen extends StatelessWidget {
             reading.reading,
             style: const TextStyle(
               color: AppTheme.textPrimary,
-              fontFamily: 'Cinzel',
               fontSize: 14,
               height: 1.8,
             ),
@@ -239,7 +232,7 @@ class TarotResultScreen extends StatelessWidget {
   void _share() {
     final cardNames = cards.map((c) => c.nameTr).join(', ');
     Share.share(
-      '🃏 Tarot Falı - Falcı Teyze\n\nKartlar: $cardNames\nKonu: ${reading.topic}\n\n${reading.reading}\n\n🔮 Falcı Teyze uygulamasından',
+      '🃏 Tarot Falı - Falcım\n\nKartlar: $cardNames\nKonu: ${reading.topic}\n\n${reading.reading}\n\n🔮 Falcım uygulamasından',
     );
   }
 }

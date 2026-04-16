@@ -35,14 +35,15 @@ class FirestoreService {
     await _firestore
         .collection(AppConstants.usersCollection)
         .doc(uid)
-        .update({'credits': FieldValue.increment(-1)});
+        .update({'krediler': FieldValue.increment(-1)});
   }
 
   Future<void> addCredits(String uid, int amount) async {
+    // set+merge kullan — doküman yoksa oluşturur, varsa günceller
     await _firestore
         .collection(AppConstants.usersCollection)
         .doc(uid)
-        .update({'credits': FieldValue.increment(amount)});
+        .set({'krediler': FieldValue.increment(amount)}, SetOptions(merge: true));
   }
 
   Future<void> setPremium(String uid, DateTime until) async {
@@ -52,8 +53,15 @@ class FirestoreService {
         .update({
       'isPremium': true,
       'premiumUntil': Timestamp.fromDate(until),
-      'credits': FieldValue.increment(100),
+      'krediler': FieldValue.increment(100),
     });
+  }
+
+  Future<void> updateUserDisplayName(String uid, String name) async {
+    await _firestore
+        .collection(AppConstants.usersCollection)
+        .doc(uid)
+        .update({'displayName': name});
   }
 
   Future<List<String>> uploadImages(
@@ -84,11 +92,12 @@ class FirestoreService {
     final snapshot = await _firestore
         .collection(AppConstants.readingsCollection)
         .where('userId', isEqualTo: uid)
-        .orderBy('createdAt', descending: true)
         .get();
-    return snapshot.docs
+    final readings = snapshot.docs
         .map((doc) => ReadingModel.fromMap(doc.data(), doc.id))
         .toList();
+    readings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return readings;
   }
 
   Future<ReadingModel?> getReading(String readingId) async {

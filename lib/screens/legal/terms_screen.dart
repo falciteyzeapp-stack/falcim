@@ -30,7 +30,6 @@ class TermsScreen extends StatelessWidget {
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textPrimary,
-                          fontFamily: 'Cinzel',
                         ),
                       ),
                     ),
@@ -45,7 +44,6 @@ class TermsScreen extends StatelessWidget {
                     _termsText,
                     style: TextStyle(
                       color: AppTheme.textPrimary,
-                      fontFamily: 'Cinzel',
                       fontSize: 13,
                       height: 1.8,
                     ),
@@ -64,11 +62,11 @@ const String _termsText = '''
 KULLANIM KOŞULLARI
 Son güncelleme: Şubat 2026
 
-Falcı Teyze uygulamasını kullanmadan önce bu koşulları dikkatlice okuyunuz.
+Falcım uygulamasını kullanmadan önce bu koşulları dikkatlice okuyunuz.
 
 1. HİZMET TANIMI
 
-Falcı Teyze, kahve falı ve tarot kartı yorumları sunan bir eğlence uygulamasıdır. Sunulan tüm yorumlar tamamen eğlence amaçlıdır ve gerçek hayat kararlarında temel alınmamalıdır.
+Falcım, kahve falı ve tarot kartı yorumları sunan bir eğlence uygulamasıdır. Sunulan tüm yorumlar tamamen eğlence amaçlıdır ve gerçek hayat kararlarında temel alınmamalıdır.
 
 2. ÜYELİK KURALLARI
 
@@ -95,7 +93,7 @@ Uygulamayı tersine mühendislik ile analiz etmek, otomatik araçlarla toplu ist
 
 6. SORUMLULUK SINIRLAMASI
 
-Falcı Teyze, fal yorumlarının doğruluğu veya güvenilirliği konusunda garanti vermemektedir.
+Falcım, fal yorumlarının doğruluğu veya güvenilirliği konusunda garanti vermemektedir.
 
 7. UYUŞMAZLIK ÇÖZÜMÜ
 

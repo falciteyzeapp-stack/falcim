@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum ReadingType { coffee, tarot }
+enum ReadingType { coffee, tarot, palm }
 
 class ReadingModel {
   final String id;
@@ -26,10 +26,21 @@ class ReadingModel {
   });
 
   factory ReadingModel.fromMap(Map<String, dynamic> map, String id) {
+    ReadingType type;
+    switch (map['type']) {
+      case 'coffee':
+        type = ReadingType.coffee;
+        break;
+      case 'tarot':
+        type = ReadingType.tarot;
+        break;
+      default:
+        type = ReadingType.palm;
+    }
     return ReadingModel(
       id: id,
       userId: map['userId'] ?? '',
-      type: map['type'] == 'coffee' ? ReadingType.coffee : ReadingType.tarot,
+      type: type,
       topic: map['topic'] ?? '',
       userNote: map['userNote'] ?? '',
       reading: map['reading'] ?? '',
@@ -42,9 +53,21 @@ class ReadingModel {
   }
 
   Map<String, dynamic> toMap() {
+    String typeStr;
+    switch (type) {
+      case ReadingType.coffee:
+        typeStr = 'coffee';
+        break;
+      case ReadingType.tarot:
+        typeStr = 'tarot';
+        break;
+      case ReadingType.palm:
+        typeStr = 'palm';
+        break;
+    }
     return {
       'userId': userId,
-      'type': type == ReadingType.coffee ? 'coffee' : 'tarot',
+      'type': typeStr,
       'topic': topic,
       'userNote': userNote,
       'reading': reading,

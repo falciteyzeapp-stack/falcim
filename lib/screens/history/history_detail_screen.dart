@@ -37,7 +37,6 @@ class HistoryDetailScreen extends StatelessWidget {
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textPrimary,
-                          fontFamily: 'Cinzel',
                         ),
                       ),
                     ),
@@ -77,7 +76,6 @@ class HistoryDetailScreen extends StatelessWidget {
                                 'Senin Notun',
                                 style: TextStyle(
                                   color: AppTheme.textSecondary,
-                                  fontFamily: 'Cinzel',
                                   fontSize: 12,
                                 ),
                               ),
@@ -86,7 +84,6 @@ class HistoryDetailScreen extends StatelessWidget {
                                 reading.userNote,
                                 style: const TextStyle(
                                   color: AppTheme.textPrimary,
-                                  fontFamily: 'Cinzel',
                                   fontSize: 14,
                                   height: 1.5,
                                 ),
@@ -113,10 +110,9 @@ class HistoryDetailScreen extends StatelessWidget {
                                     color: AppTheme.gold, size: 18),
                                 SizedBox(width: 8),
                                 Text(
-                                  'Falcı Teyze\'nin Yorumu',
+                                  'Falcım\'nin Yorumu',
                                   style: TextStyle(
                                     color: AppTheme.gold,
-                                    fontFamily: 'Cinzel',
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -130,7 +126,6 @@ class HistoryDetailScreen extends StatelessWidget {
                               reading.reading,
                               style: const TextStyle(
                                 color: AppTheme.textPrimary,
-                                fontFamily: 'Cinzel',
                                 fontSize: 14,
                                 height: 1.8,
                               ),
@@ -165,7 +160,6 @@ class HistoryDetailScreen extends StatelessWidget {
           'Yüklenen Fotoğraflar',
           style: TextStyle(
             color: AppTheme.textSecondary,
-            fontFamily: 'Cinzel',
             fontSize: 12,
           ),
         ),
@@ -209,7 +203,6 @@ class HistoryDetailScreen extends StatelessWidget {
           'Seçilen Kartlar',
           style: TextStyle(
             color: AppTheme.textSecondary,
-            fontFamily: 'Cinzel',
             fontSize: 12,
           ),
         ),
@@ -229,7 +222,6 @@ class HistoryDetailScreen extends StatelessWidget {
                 name,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontFamily: 'Cinzel',
                   fontSize: 12,
                 ),
               ),
@@ -255,7 +247,6 @@ class HistoryDetailScreen extends StatelessWidget {
             reading.topic,
             style: const TextStyle(
               color: AppTheme.primary,
-              fontFamily: 'Cinzel',
               fontSize: 12,
               fontWeight: FontWeight.bold,
             ),
@@ -267,7 +258,6 @@ class HistoryDetailScreen extends StatelessWidget {
               .format(reading.createdAt),
           style: const TextStyle(
             color: AppTheme.textSecondary,
-            fontFamily: 'Cinzel',
             fontSize: 12,
           ),
         ),
@@ -277,7 +267,7 @@ class HistoryDetailScreen extends StatelessWidget {
 
   void _share() {
     Share.share(
-      '🔮 Fal Yorumum - Falcı Teyze\n\nKonu: ${reading.topic}\n\n${reading.reading}\n\n🌙 Falcı Teyze uygulamasından',
+      '🔮 Fal Yorumum - Falcım\n\nKonu: ${reading.topic}\n\n${reading.reading}\n\n🌙 Falcım uygulamasından',
     );
   }
 }

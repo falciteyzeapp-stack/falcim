@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "691072704853",
+    "project_id": "falci-teeyze",
+    "storage_bucket": "falci-teeyze.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:691072704853:android:624820a143e1d57b4acfdc",
+        "android_client_info": {
+          "package_name": "com.mysticfal.falci_teyze"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDIEAvo-hLBEepqZvZ2hUeUMAKDrwdsKaY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

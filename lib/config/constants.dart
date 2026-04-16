@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String appName = 'Falcı Teyze';
+  static const String appName = 'Falcim';
   static const String packageName = 'com.mysticfal.falciteyze';
   static const String supportEmail = 'meryemka3555@gmail.com';
 
@@ -7,13 +7,11 @@ class AppConstants {
   static const String openAiApiKey = 'YOUR_OPENAI_API_KEY_HERE';
   static const String openAiBaseUrl = 'https://api.openai.com/v1/chat/completions';
 
-  // In-App Purchase Product IDs
-  static const String productSingleFortune = 'single_fortune_25tl';
-  static const String productWeeklyPremium = 'weekly_premium_200tl';
-  static const String productMonthlyPremium = 'monthly_premium_200tl';
+  // In-App Purchase Product IDs — sadece consumable 25 TL
+  static const String productSingleFortune = 'fal_hakki_1';
 
   // Firestore Collections
-  static const String usersCollection = 'users';
+  static const String usersCollection = 'kullanicilar';
   static const String readingsCollection = 'readings';
   static const String phonesCollection = 'phones';
 

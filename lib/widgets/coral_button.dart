@@ -135,7 +135,6 @@ class SocialButton extends StatelessWidget {
               text,
               style: const TextStyle(
                 fontSize: 15,
-                fontFamily: 'Cinzel',
                 color: AppTheme.textPrimary,
               ),
             ),

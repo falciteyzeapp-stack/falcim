@@ -6,6 +6,7 @@ import '../../models/tarot_card.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/wave_background.dart';
 import '../../widgets/coral_button.dart';
+import '../../widgets/premium_tarot_card.dart';
 import '../../config/constants.dart';
 import '../payment/payment_screen.dart';
 import 'tarot_waiting_screen.dart';
@@ -20,7 +21,6 @@ class TarotScreen extends StatefulWidget {
 class _TarotScreenState extends State<TarotScreen> {
   late List<TarotCard> _shuffledCards;
   final Set<int> _selectedIndices = {};
-  final Set<int> _revealedIndices = {};
   String _selectedTopic = 'Genel';
   final _noteCtrl = TextEditingController();
 
@@ -40,15 +40,9 @@ class _TarotScreenState extends State<TarotScreen> {
 
   void _toggleCard(int index) {
     if (_selectedIndices.contains(index)) {
-      setState(() {
-        _selectedIndices.remove(index);
-        _revealedIndices.remove(index);
-      });
+      setState(() => _selectedIndices.remove(index));
     } else if (_selectedIndices.length < _maxCards) {
-      setState(() {
-        _selectedIndices.add(index);
-        _revealedIndices.add(index);
-      });
+      setState(() => _selectedIndices.add(index));
     }
   }
 
@@ -75,8 +69,7 @@ class _TarotScreenState extends State<TarotScreen> {
     }
 
     final sortedIndices = _selectedIndices.toList()..sort();
-    final selectedCards =
-        sortedIndices.map((i) => _shuffledCards[i]).toList();
+    final selectedCards = sortedIndices.map((i) => _shuffledCards[i]).toList();
 
     Navigator.push(
       context,
@@ -98,32 +91,29 @@ class _TarotScreenState extends State<TarotScreen> {
     return WaveBackground(
       child: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(user?.credits ?? 0),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               if (!hasCredits)
                 _buildNoCreditsCard()
               else ...[
                 _buildTopicSelector(),
-                const SizedBox(height: 20),
-                _buildNoteField(),
-                const SizedBox(height: 20),
-                _buildSelectedCards(),
-                const SizedBox(height: 20),
-                _buildInstruction(),
                 const SizedBox(height: 16),
+                _buildNoteField(),
+                const SizedBox(height: 16),
+                _buildSelectedInfo(),
+                const SizedBox(height: 12),
                 _buildCardGrid(),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 CoralButton(
                   text: _selectedIndices.length == _maxCards
-                      ? 'Tarot Falımı Baktır'
+                      ? '✨ Tarot Falımı Baktır'
                       : '${_selectedIndices.length} / $_maxCards Kart Seçildi',
-                  onPressed: _selectedIndices.length == _maxCards
-                      ? _startReading
-                      : null,
+                  onPressed:
+                      _selectedIndices.length == _maxCards ? _startReading : null,
                   icon: Icons.auto_awesome,
                 ).animate().fadeIn(delay: 200.ms),
               ],
@@ -141,44 +131,13 @@ class _TarotScreenState extends State<TarotScreen> {
         const Text(
           '🃏 Tarot Falı',
           style: TextStyle(
-            fontSize: 26,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             color: AppTheme.textPrimary,
-            fontFamily: 'Cinzel',
           ),
         ),
         const Spacer(),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: credits > 0
-                ? AppTheme.primary.withOpacity(0.2)
-                : AppTheme.error.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: credits > 0 ? AppTheme.primary : AppTheme.error,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.stars_rounded,
-                size: 16,
-                color: credits > 0 ? AppTheme.primary : AppTheme.error,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '$credits Hak',
-                style: TextStyle(
-                  color: credits > 0 ? AppTheme.primary : AppTheme.error,
-                  fontFamily: 'Cinzel',
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
+        _CreditsChip(credits: credits),
       ],
     );
   }
@@ -188,10 +147,16 @@ class _TarotScreenState extends State<TarotScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF3D1515), Color(0xFF2D1010)],
+          colors: [Color(0x88CC2020), Color(0x66881010)],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.gold.withOpacity(0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.gold.withOpacity(0.1),
+            blurRadius: 16,
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -204,22 +169,20 @@ class _TarotScreenState extends State<TarotScreen> {
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: AppTheme.textPrimary,
-              fontFamily: 'Cinzel',
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             '25 TL ile 1 fal hakkı satın al',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontFamily: 'Cinzel',
+              color: Colors.white.withOpacity(0.7),
               fontSize: 14,
             ),
           ),
           const SizedBox(height: 20),
           CoralButton(
-            text: 'Satın Al',
+            text: '25 TL — Fal Hakkı Al',
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const PaymentScreen()),
@@ -228,7 +191,7 @@ class _TarotScreenState extends State<TarotScreen> {
           ),
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 400.ms);
   }
 
   Widget _buildTopicSelector() {
@@ -239,12 +202,11 @@ class _TarotScreenState extends State<TarotScreen> {
           'Fal Konusu',
           style: TextStyle(
             color: AppTheme.textPrimary,
-            fontFamily: 'Cinzel',
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -254,24 +216,23 @@ class _TarotScreenState extends State<TarotScreen> {
               onTap: () => setState(() => _selectedTopic = topic),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
                   gradient: selected ? AppTheme.coralGradient : null,
-                  color: selected ? null : AppTheme.surface,
+                  color: selected ? null : Colors.black.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: selected
-                        ? Colors.transparent
-                        : const Color(0xFF5D3030),
+                        ? AppTheme.gold.withOpacity(0.6)
+                        : Colors.white.withOpacity(0.2),
                   ),
                 ),
                 child: Text(
                   topic,
                   style: TextStyle(
-                    color: selected ? Colors.white : AppTheme.textSecondary,
-                    fontFamily: 'Cinzel',
-                    fontSize: 13,
+                    color: selected ? Colors.white : Colors.white.withOpacity(0.7),
+                    fontSize: 12,
                     fontWeight:
                         selected ? FontWeight.bold : FontWeight.normal,
                   ),
@@ -287,87 +248,52 @@ class _TarotScreenState extends State<TarotScreen> {
   Widget _buildNoteField() {
     return TextFormField(
       controller: _noteCtrl,
-      maxLines: 3,
-      style: const TextStyle(
-          color: AppTheme.textPrimary, fontFamily: 'Cinzel'),
-      decoration: const InputDecoration(
+      maxLines: 2,
+      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+      decoration: InputDecoration(
         labelText: 'Durumunu Anlat (İsteğe Bağlı)',
         hintText: 'Merak ettiğin konuyu kısaca anlat...',
-        hintStyle: TextStyle(
-            color: Color(0xFF7A5050), fontFamily: 'Cinzel', fontSize: 13),
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
       ),
     );
   }
 
-  Widget _buildSelectedCards() {
-    if (_selectedIndices.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF5D3030)),
+  Widget _buildSelectedInfo() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _selectedIndices.length == _maxCards
+              ? AppTheme.gold.withOpacity(0.5)
+              : Colors.white.withOpacity(0.15),
         ),
-        child: const Text(
-          '4 kart seç — önce kapalı görünecek, seçince açılacak',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppTheme.textSecondary,
-            fontFamily: 'Cinzel',
-            fontSize: 13,
-            fontStyle: FontStyle.italic,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _selectedIndices.length == _maxCards
+                ? Icons.check_circle
+                : Icons.info_outline,
+            color: _selectedIndices.length == _maxCards
+                ? AppTheme.gold
+                : Colors.white.withOpacity(0.5),
+            size: 16,
           ),
-        ),
-      );
-    }
-    final sortedIndices = _selectedIndices.toList()..sort();
-    return SizedBox(
-      height: 90,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: sortedIndices.length,
-        itemBuilder: (_, i) {
-          final card = _shuffledCards[sortedIndices[i]];
-          return Container(
-            width: 72,
-            margin: const EdgeInsets.only(right: 10),
-            decoration: BoxDecoration(
-              gradient: AppTheme.coralGradient,
-              borderRadius: BorderRadius.circular(10),
+          const SizedBox(width: 8),
+          Text(
+            _selectedIndices.length == _maxCards
+                ? '4 kart seçildi — falını başlatabilirsin!'
+                : '${_selectedIndices.length} / $_maxCards kart seçildi — aşağıdan 4 kart seç',
+            style: TextStyle(
+              color: _selectedIndices.length == _maxCards
+                  ? AppTheme.gold
+                  : Colors.white.withOpacity(0.6),
+              fontSize: 12,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(card.emoji,
-                    style: const TextStyle(fontSize: 24)),
-                const SizedBox(height: 4),
-                Text(
-                  card.nameTr,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'Cinzel',
-                    fontSize: 8,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildInstruction() {
-    return Text(
-      '${_selectedIndices.length} / $_maxCards kart seçildi — aşağıdan 4 kart seç',
-      style: const TextStyle(
-        color: AppTheme.textSecondary,
-        fontFamily: 'Cinzel',
-        fontSize: 13,
-        fontStyle: FontStyle.italic,
+          ),
+        ],
       ),
     );
   }
@@ -378,79 +304,65 @@ class _TarotScreenState extends State<TarotScreen> {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-        childAspectRatio: 0.65,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 0.62,
       ),
       itemCount: _shuffledCards.length,
-      itemBuilder: (_, i) => _buildTarotCard(i),
+      itemBuilder: (_, i) {
+        final card = _shuffledCards[i];
+        final isSelected = _selectedIndices.contains(i);
+        final isDisabled = !isSelected && _selectedIndices.length >= _maxCards;
+        return PremiumTarotCard(
+          emoji: card.emoji,
+          name: card.nameTr,
+          isSelected: isSelected,
+          isDisabled: isDisabled,
+          onTap: isDisabled ? null : () => _toggleCard(i),
+        );
+      },
     );
   }
+}
 
-  Widget _buildTarotCard(int index) {
-    final card = _shuffledCards[index];
-    final isSelected = _selectedIndices.contains(index);
-    final isRevealed = _revealedIndices.contains(index);
-    final isDisabled =
-        !isSelected && _selectedIndices.length >= _maxCards;
+class _CreditsChip extends StatelessWidget {
+  final int credits;
+  const _CreditsChip({required this.credits});
 
-    return GestureDetector(
-      onTap: isDisabled ? null : () => _toggleCard(index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        decoration: BoxDecoration(
-          gradient: isSelected
-              ? AppTheme.coralGradient
-              : isDisabled
-                  ? const LinearGradient(
-                      colors: [Color(0xFF1A0A0A), Color(0xFF0D0505)])
-                  : AppTheme.cardGradient,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected
-                ? AppTheme.primary
-                : const Color(0xFF5D3030),
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.3),
-                    blurRadius: 8,
-                  )
-                ]
-              : null,
+  @override
+  Widget build(BuildContext context) {
+    final hasCredits = credits > 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: hasCredits
+            ? AppTheme.gold.withOpacity(0.15)
+            : AppTheme.error.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: hasCredits
+              ? AppTheme.gold.withOpacity(0.6)
+              : AppTheme.error.withOpacity(0.6),
         ),
-        child: isRevealed
-            ? Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(card.emoji,
-                      style: const TextStyle(fontSize: 20)),
-                  const SizedBox(height: 4),
-                  Text(
-                    card.nameTr,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'Cinzel',
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              )
-            : Center(
-                child: Icon(
-                  Icons.auto_awesome,
-                  color: isDisabled
-                      ? AppTheme.textSecondary.withOpacity(0.3)
-                      : AppTheme.primary.withOpacity(0.6),
-                  size: 22,
-                ),
-              ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.stars_rounded,
+            size: 14,
+            color: hasCredits ? AppTheme.gold : AppTheme.error,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$credits Hak',
+            style: TextStyle(
+              color: hasCredits ? AppTheme.gold : AppTheme.error,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

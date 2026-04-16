@@ -1,0 +1,16 @@
+{
+  "java.home": "/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home",
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-17",
+      "path": "/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home",
+      "default": true
+    }
+  ],
+  "java.jdt.ls.java.home": "/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home",
+  "gradle.java.home": "/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home",
+  "terminal.integrated.env.osx": {
+    "JAVA_HOME": "/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home",
+    "PATH": "/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home/bin:${env:PATH}"
+  }
+}
